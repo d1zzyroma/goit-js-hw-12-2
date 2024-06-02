@@ -18,13 +18,18 @@ const refs = {
     
 };
 
+const galleryImages = new SimpleLightbox('.gallery a', {
+    showCounter: false,
+    captionsData: "alt",
+    captionDelay: 250
+});
 
 refs.formEl.addEventListener("submit", handleSubmit);
 
 let currentPage = 1;
 let globalInputValue = "";
 
-function handleSubmit(event) {
+async function handleSubmit(event) {
     event.preventDefault();
     refs.gallery.innerHTML = "";
     const inputValue = refs.inputFormEl.value.trim();
@@ -34,44 +39,38 @@ function handleSubmit(event) {
     
     showLoader();
 
-    getImages(inputValue, currentPage)
-                                        .then(response => {
-                                            if (response.data.hits.length > 0) {
-                                                const markup = createMarkup(response.data.hits);
-                                                refs.gallery.insertAdjacentHTML("beforeend", markup);
-                                                let galleryImages = new SimpleLightbox('.gallery a', {
-                                                    showCounter: false,
-                                                    captionsData: "alt",
-                                                    captionDelay: 250
-                                                });
+    try {
+        const response = await getImages(inputValue, currentPage);
 
-                                                galleryImages.refresh();
-                                                
-                                            } else {
-                                                iziToast.show({
-                                                    title: 'Error',
-                                                    message: 'What would you like to add?',
-                                                    position: "topRight",
-                                                    color: "rgba(239, 64, 64, 1)",
-                                                    icon: "fas fa-exclamation-circle"
-                                                });
-                                                refs.buttonLoadMore.style.display = "none";
-                                            }
+        if (response.data.hits.length > 0) {
+            const markup = createMarkup(response.data.hits);
+            refs.gallery.insertAdjacentHTML("beforeend", markup);
+            galleryImages.refresh();
 
-                                            if(refs.gallery.children.length > 0){
-                                                refs.buttonLoadMore.style.display = "inline"
-                                            };
-                                            
-                                        })
+            if (refs.gallery.children.length > 0) {
+                refs.buttonLoadMore.style.display = "inline";
+            }
 
-                                        .catch(error => console.log(error))
-                                        
-                                        .finally(() => {
-                                            hideLoader();
-                                            
-                                        });
-                                        
+            if (response.data.totalHits === refs.gallery.children.length) {
+                refs.buttonLoadMore.style.display = "none";
+            }
+        } else {
+            iziToast.show({
+                title: 'Error',
+                message: 'What would you like to add?',
+                position: "topRight",
+                color: "rgba(239, 64, 64, 1)",
+                icon: "fas fa-exclamation-circle"
+            });
+            refs.buttonLoadMore.style.display = "none";
+        }
+    } catch (error) {
+        console.log(error);
+    } finally {
+        hideLoader();
+    }
 }
+    
 
 
 function showLoader() {
@@ -87,50 +86,39 @@ function hideLoader() {
 
 refs.buttonLoadMore.addEventListener("click", handleLoadMore);
 
-function handleLoadMore(){
+async function handleLoadMore(){
     currentPage += 1;
     showLoader();
-    getImages(globalInputValue, currentPage)
+    try{
+        const response = await getImages(globalInputValue, currentPage)
 
-                                            .then(response => {
+        if (response.data.hits.length > 0) {
+            const markup = createMarkup(response.data.hits);
+            refs.gallery.insertAdjacentHTML("beforeend", markup);
+            galleryImages.refresh();
+        } 
+        if(response.data.totalHits === refs.gallery.children.length){
+            iziToast.show({
+                title: 'Error',
+                message: "We're sorry, but you've reached the end of search results.",
+                position: "topRight",
+                color: "rgba(239, 64, 64, 1)",
+                icon: "fas fa-exclamation-circle"
+            });
+            refs.buttonLoadMore.style.display = "none";
+        }
 
-                                                if (response.data.hits.length > 0) {
-                                                    const markup = createMarkup(response.data.hits);
-                                                    refs.gallery.insertAdjacentHTML("beforeend", markup);
-
-                                                    let galleryImages = new SimpleLightbox('.gallery a', {
-                                                        showCounter: false,
-                                                        captionsData: "alt",
-                                                        captionDelay: 250
-                                                    });
-
-                                                    galleryImages.refresh();
-                                                } 
-
-                                                
-                                                if(response.data.totalHits === refs.gallery.children.length){
-                                                    iziToast.show({
-                                                        title: 'Error',
-                                                        message: "We're sorry, but you've reached the end of search results.",
-                                                        position: "topRight",
-                                                        color: "rgba(239, 64, 64, 1)",
-                                                        icon: "fas fa-exclamation-circle"
-                                                    });
-                                                    refs.buttonLoadMore.style.display = "none";
-                                                }
-                                                const galleryItem = document.querySelector(".gallery-item");
-                                                galleryItem.getBoundingClientRect();
-                                                window.scrollBy({
-                                                    top: 340,
-                                                    left: 0,
-                                                    behavior: "smooth",
-                                                  });
-                                            })
-
-                                            .catch(error => console.log(error))
-                                            .finally(() => {
-                                                hideLoader();
-                                            });
-
+        const galleryItem = document.querySelector(".gallery-item");
+        galleryItem.getBoundingClientRect();
+        window.scrollBy({
+            top: 50,
+            left: 0,
+            behavior: "smooth",
+          });
+    }catch(error){
+        console.error(error.message)
+    }finally{
+        hideLoader();
+    }
 }
 
